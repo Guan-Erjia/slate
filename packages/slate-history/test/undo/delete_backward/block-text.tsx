@@ -4,7 +4,7 @@ import { jsx } from '../..'
 import { cloneDeep } from 'lodash'
 
 export const run = editor => {
-  Transforms.delete(editor, {reverse: true})
+  Transforms.delete(editor, { reverse: true })
 }
 export const input = (
   <editor>
