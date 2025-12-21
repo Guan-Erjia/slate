@@ -360,33 +360,44 @@ export const Node: NodeInterface = {
     const newRoot = { children: root.children }
 
     const [start, end] = Range.edges(range)
-    const nodeEntries = Node.nodes(newRoot, {
-      reverse: true,
-      pass: ([, path]) => !Range.includes(range, path),
-    })
+    const startText = Node.leaf(newRoot, start.path).text.slice(start.offset)
+    const endText = Node.leaf(newRoot, end.path).text.slice(0, end.offset)
 
-    for (const [, path] of nodeEntries) {
-      if (!Range.includes(range, path)) {
-        const index = path[path.length - 1]
-
-        modifyChildren(newRoot, Path.parent(path), children =>
-          removeChildren(children, index, 1)
-        )
+    let node: Element = newRoot
+    for (let i = 0; i < end.path.length; i++) {
+      const index = end.path[i]
+      node.children = node.children.slice(0, index + 1)
+      if (Element.isElement(node.children[index])) {
+        node = node.children[index] as Element
       }
-
-      if (Path.equals(path, end.path)) {
-        modifyLeaf(newRoot, path, node => {
-          const before = node.text.slice(0, end.offset)
-          return { ...node, text: before }
-        })
+    }
+    node = newRoot
+    for (let i = 0; i < start.path.length; i++) {
+      const index = start.path[i]
+      node.children = node.children.slice(index)
+      if (Element.isElement(node.children[0])) {
+        node = node.children[0]
       }
-
-      if (Path.equals(path, start.path)) {
-        modifyLeaf(newRoot, path, node => {
-          const before = node.text.slice(start.offset)
-          return { ...node, text: before }
-        })
-      }
+    }
+    const simpleClone = (node: T['children']): T['children'] => {
+      return node.map(n => {
+        if (Element.isElement(n)) {
+          return {
+            ...n,
+            children: simpleClone(n.children),
+          }
+        }
+        return { ...n }
+      })
+    }
+    newRoot.children = simpleClone(newRoot.children)
+    const [firstNode] = Node.first(newRoot, [])
+    if (Text.isText(firstNode)) {
+      firstNode.text = startText
+    }
+    const [lastNode] = Node.last(newRoot, [])
+    if (Text.isText(lastNode)) {
+      lastNode.text = endText
     }
 
     return newRoot.children
